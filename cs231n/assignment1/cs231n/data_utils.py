@@ -1,4 +1,4 @@
-import cPickle as pickle
+import pickle
 import numpy as np
 import os
 from scipy.misc import imread
@@ -6,7 +6,7 @@ from scipy.misc import imread
 def load_CIFAR_batch(filename):
   """ load single batch of cifar """
   with open(filename, 'rb') as f:
-    datadict = pickle.load(f)
+    datadict = pickle.load(f, encoding='latin1')
     X = datadict['data']
     Y = datadict['labels']
     X = X.reshape(10000, 3, 32, 32).transpose(0,2,3,1).astype("float")
@@ -21,7 +21,7 @@ def load_CIFAR10(ROOT):
     f = os.path.join(ROOT, 'data_batch_%d' % (b, ))
     X, Y = load_CIFAR_batch(f)
     xs.append(X)
-    ys.append(Y)    
+    ys.append(Y)
   Xtr = np.concatenate(xs)
   Ytr = np.concatenate(ys)
   del X, Y
@@ -68,13 +68,13 @@ def load_tiny_imagenet(path, dtype=np.float32):
   y_train = []
   for i, wnid in enumerate(wnids):
     if (i + 1) % 20 == 0:
-      print 'loading training data for synset %d / %d' % (i + 1, len(wnids))
+      print('loading training data for synset %d / %d' % (i + 1, len(wnids)))
     # To figure out the filenames we need to open the boxes file
     boxes_file = os.path.join(path, 'train', wnid, '%s_boxes.txt' % wnid)
     with open(boxes_file, 'r') as f:
       filenames = [x.split('\t')[0] for x in f]
     num_images = len(filenames)
-    
+
     X_train_block = np.zeros((num_images, 3, 64, 64), dtype=dtype)
     y_train_block = wnid_to_label[wnid] * np.ones(num_images, dtype=np.int64)
     for j, img_file in enumerate(filenames):
@@ -86,11 +86,11 @@ def load_tiny_imagenet(path, dtype=np.float32):
       X_train_block[j] = img.transpose(2, 0, 1)
     X_train.append(X_train_block)
     y_train.append(y_train_block)
-      
+
   # We need to concatenate all training data
   X_train = np.concatenate(X_train, axis=0)
   y_train = np.concatenate(y_train, axis=0)
-  
+
   # Next load validation data
   with open(os.path.join(path, 'val', 'val_annotations.txt'), 'r') as f:
     img_files = []
@@ -131,7 +131,7 @@ def load_tiny_imagenet(path, dtype=np.float32):
         img_file_to_wnid[line[0]] = line[1]
     y_test = [wnid_to_label[img_file_to_wnid[img_file]] for img_file in img_files]
     y_test = np.array(y_test)
-  
+
   return class_names, X_train, y_train, X_val, y_val, X_test, y_test
 
 
