@@ -74,14 +74,15 @@ def svm_loss_vectorized(W, X, y, reg):
   # Implement a vectorized version of the structured SVM loss, storing the    #
   # result in loss.                                                           #
   #############################################################################
-  num_train = float(X.shape[0])
+  num_train = X.shape[0]
   scores = X.dot(W) # 500:10
   correct_class_scores = np.choose(y, scores.T) # 500
   correct_scores = np.tile(correct_class_scores, (10, 1)).T
   margins = scores - correct_scores + 1
-  loss = np.sum(margins[margins > 0]) - 1 * num_train
-  print(margins.shape)
-  loss /= num_train
+  margins[np.arange(margins.shape[0]), y] = 0
+  margins_selector = margins > 0
+  loss = np.sum(margins[margins_selector])
+  loss /= float(num_train)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -96,7 +97,13 @@ def svm_loss_vectorized(W, X, y, reg):
   # to reuse some of the intermediate values that you used to compute the     #
   # loss.                                                                     #
   #############################################################################
-  pass
+  counts = np.sum(margins_selector, axis=1)
+  for i in range(num_train):
+    dW[:,y[i]] -= counts[i] * X[i]
+    tiled = np.tile(X[i], (dW.shape[1], 1))
+    dW += np.diag(margins_selector[i]).dot(tiled).T
+  dW /= float(num_train)
+
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
