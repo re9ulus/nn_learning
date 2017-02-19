@@ -24,7 +24,6 @@ def softmax_loss_naive(W, X, y, reg):
   dW = np.zeros_like(W)
   num_train = X.shape[0]
   num_classes = W.shape[1]
-
   #############################################################################
   # TODO: Compute the softmax loss and its gradient using explicit loops.     #
   # Store the loss in loss and the gradient in dW. If you are not careful     #
@@ -38,10 +37,10 @@ def softmax_loss_naive(W, X, y, reg):
       for j in range(num_classes):
           dW[:,j] += (np.exp(W[:,j].dot(X[i])) / float(total_sum)) * X[i]
           if j == y[i]:
-              dW[:,j] -= X[i]
+            dW[:,j] -= X[i]
   loss /= float(num_train)
   dW /= float(num_train)
-  loss += reg * np.sum(W**2)
+  loss += reg * np.sum(W*W)
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
@@ -57,14 +56,26 @@ def softmax_loss_vectorized(W, X, y, reg):
   # Initialize the loss and gradient to zero.
   loss = 0.0
   dW = np.zeros_like(W)
-
+  num_train = X.shape[0]
+  num_classes = W.shape[1]
   #############################################################################
   # TODO: Compute the softmax loss and its gradient using no explicit loops.  #
   # Store the loss in loss and the gradient in dW. If you are not careful     #
   # here, it is easy to run into numeric instability. Don't forget the        #
   # regularization!                                                           #
   #############################################################################
-  pass
+  scores = X.dot(W) # 500:10
+  total_sums = np.sum(np.exp(scores), axis=1) # 500
+  loss = np.sum(-scores[np.arange(num_train), y] + np.log(total_sums))
+  dW = np.dot(X.T, np.divide(np.exp(scores), total_sums[:, np.newaxis]))
+
+  for i in range(num_train):
+    for j in range(num_classes):
+      if j == y[i]:
+        dW[:,j] -= X[i]
+  loss /= float(num_train)
+  dW /= float(num_train)
+  loss += reg * np.sum(W**2)
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
