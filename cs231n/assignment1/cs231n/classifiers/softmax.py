@@ -41,10 +41,10 @@ def softmax_loss_naive(W, X, y, reg):
               dW[:,j] -= X[i]
   loss /= float(num_train)
   dW /= float(num_train)
+  loss += reg * np.sum(W**2)
   #############################################################################
   #                          END OF YOUR CODE                                 #
   #############################################################################
-
   return loss, dW
 
 
