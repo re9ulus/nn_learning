@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+def ReLU(X):
+    return np.maximum(X, 0)
+
 
 class TwoLayerNet(object):
   """
@@ -39,6 +42,9 @@ class TwoLayerNet(object):
     self.params['W2'] = std * np.random.randn(hidden_size, output_size)
     self.params['b2'] = np.zeros(output_size)
 
+  def _ReLU(X):
+      return np.maxumum(X, 0)
+
   def loss(self, X, y=None, reg=0.0):
     """
     Compute the loss and gradients for a two layer fully connected neural
@@ -74,7 +80,7 @@ class TwoLayerNet(object):
     # Store the result in the scores variable, which should be an array of      #
     # shape (N, C).                                                             #
     #############################################################################
-    pass
+    scores = ReLU(X.dot(W1) + b1).dot(W2) + b2
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
