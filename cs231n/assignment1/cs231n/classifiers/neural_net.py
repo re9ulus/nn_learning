@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def ReLU(X):
     return np.maximum(X, 0)
 
@@ -41,9 +42,6 @@ class TwoLayerNet(object):
     self.params['b1'] = np.zeros(hidden_size)
     self.params['W2'] = std * np.random.randn(hidden_size, output_size)
     self.params['b2'] = np.zeros(output_size)
-
-  def _ReLU(X):
-      return np.maxumum(X, 0)
 
   def loss(self, X, y=None, reg=0.0):
     """
@@ -98,7 +96,10 @@ class TwoLayerNet(object):
     # classifier loss. So that your results match ours, multiply the            #
     # regularization loss by 0.5                                                #
     #############################################################################
-    pass
+    total_sums = np.sum(np.exp(scores), axis=1)
+    loss = np.sum(-scores[np.arange(N), y] + np.log(total_sums))
+    loss /= float(N)
+    loss += 0.5 * reg * (np.sum(W1**2) + np.sum(W2**2))
     #############################################################################
     #                              END OF YOUR CODE                             #
     #############################################################################
