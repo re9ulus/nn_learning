@@ -47,6 +47,7 @@ def svm_loss_naive(W, X, y, reg):
 
   # Add regularization to the loss.
   loss += 0.5 * reg * np.sum(W * W)
+  dW += reg * W
 
   #############################################################################
   # TODO:                                                                     #
@@ -83,6 +84,7 @@ def svm_loss_vectorized(W, X, y, reg):
   margins_selector = margins > 0
   loss = np.sum(margins[margins_selector])
   loss /= float(num_train)
+  loss += 0.5 * reg * np.sum(W * W)
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
@@ -103,7 +105,7 @@ def svm_loss_vectorized(W, X, y, reg):
     tiled = np.tile(X[i], (dW.shape[1], 1))
     dW += np.diag(margins_selector[i]).dot(tiled).T
   dW /= float(num_train)
-
+  dW += reg * W
   #############################################################################
   #                             END OF YOUR CODE                              #
   #############################################################################
