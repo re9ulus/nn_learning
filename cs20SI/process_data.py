@@ -14,7 +14,7 @@ import tensorflow as tf
 # Parameters for downloading data
 DOWNLOAD_URL = 'http://mattmahoney.net/dc/'
 EXPECTED_BYTES = 31344016
-DATA_FOLDER = '/Users/Chip/data/'
+DATA_FOLDER = './data/word2vec/'
 FILE_NAME = 'text8.zip'
 
 def download(file_name, expected_bytes):
@@ -47,7 +47,7 @@ def build_vocab(words, vocab_size):
     count = [('UNK', -1)]
     count.extend(Counter(words).most_common(vocab_size - 1))
     index = 0
-    with open('processed/vocab_1000.tsv', "w") as f:
+    with open('./data/word2vec/processed/vocab_1000.tsv', "w") as f:
         # f.write("Name\n")
         for word, _ in count:
             dictionary[word] = index
