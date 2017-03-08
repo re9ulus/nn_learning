@@ -17,52 +17,63 @@ LEARNING_RATE = 1.0
 NUM_TRAIN_STEPS = 10000
 SKIP_STEP = 2000 # how many steps to skip before reporting the loss
 
-def word2vec(batch_gen):
-    """ Build the graph for word2vec model and train it """
-    # Step 1: define the placeholders for input and output
-    # center_words have to be int to work on embedding lookup
 
-    with tf.name_scope('data'):
-        center_words = tf.placeholder(tf.int32, shape=[BATCH_SIZE], name='center_words')
-        target_words = tf.placeholder(tf.int32, shape=[BATCH_SIZE, 1], name='target_words')
+class Word2VecModel:
 
-    with tf.device('/cpu:0'):
-        # Step 2: define weights. In word2vec, it's actually the weights that we care about
-        # vocab size x embed size
-        # initialized to random uniform -1 to 1
+    def __init__(self, vocab_size, batch_size, embed_size, num_sampled, learning_rate):
+
+        self.batch_size = batch_size
+        self.vocab_size = vocab_size
+        self.embed_size = embed_size
+        self.num_sampled = num_sampled
+        self.learning_rate = learning_rate
+
+        self._build_graph()
+
+    def _create_placeholders(self):
+        with tf.name_scope('data'):
+            self.center_words = tf.placeholder(tf.int32, shape=[self.batch_size], name='center_words')
+            self.target_words = tf.placeholder(tf.int32, shape=[self.batch_size, 1], name='target_words')
+
+    def _create_embedding(self):
         with tf.name_scope('embed'):
-            embed_matrix = tf.Variable(tf.random_uniform([VOCAB_SIZE, EMBED_SIZE],
-                -1.0, 1.0), name='embed_matrix')
+            self.embed_matrix = tf.Variable(tf.random_uniform([
+                self.vocab_size, self.embed_size], -1.0, 1.0), name='embed_matrix')
 
-
-        # Step 3: define the inference
-        # get the embed of input words using tf.nn.embedding_lookup
-        # embed = tf.nn.embedding_lookup(embed_matrix, center_words, name='embed')
+    def _create_loss(self):
         with tf.name_scope('loss'):
-            embed = tf.nn.embedding_lookup(embed_matrix, center_words, name='embed')
-
-            # Step 4: construct variables for NCE loss
-            # tf.nn.nce_loss(weights, biases, labels, inputs, num_sampled, num_classes, ...)
-            # nce_weight (vocab size x embed size), intialized to truncated_normal stddev=1.0 / (EMBED_SIZE ** 0.5)
-            # bias: vocab size, initialized to 0
-            nce_weight = tf.Variable(tf.truncated_normal([VOCAB_SIZE, EMBED_SIZE],
-                    stddev= 1.0 / EMBED_SIZE ** 0.5), name='nce_weight')
-            nce_bias = tf.Variable(tf.zeros([VOCAB_SIZE]), name='nce_bias')
-
-            # define loss function to be NCE loss function
-            # tf.nn.nce_loss(weights, biases, labels, inputs, num_sampled, num_classes, ...)
-            # need to get the mean accross the batch
-
-            loss = tf.reduce_mean(tf.nn.nce_loss(weights=nce_weight,
-                                                biases=nce_bias,
-                                                labels=target_words,
-                                                inputs=embed,
-                                                num_sampled=NUM_SAMPLED,
-                                                num_classes=VOCAB_SIZE),
+            self.embed = tf.nn.embedding_lookup(self.embed_matrix, self.center_words, name='embed')
+            self.nce_weight = tf.Variable(tf.truncated_normal([self.vocab_size, self.embed_size],
+                            stddev=1.0 / self.embed_size ** 0.5), name='nce_weight')
+            self.nce_bias = tf.Variable(tf.zeros([self.vocab_size]), name='nce_bias')
+            self.loss = tf.reduce_mean(tf.nn.nce_loss(
+                                                weights=self.nce_weight,
+                                                biases=self.nce_bias,
+                                                labels=self.target_words,
+                                                inputs=self.embed,
+                                                num_sampled=self.num_sampled,
+                                                num_classes=self.vocab_size),
                                                 name='loss')
 
-        # Step 5: define optimizer
-        optimizer = tf.train.GradientDescentOptimizer(LEARNING_RATE).minimize(loss)
+    def _create_optimizer(self):
+        self.optimizer = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
+
+    def _build_graph(self):
+        self._create_placeholders()
+        self._create_embedding()
+        self._create_loss()
+        self._create_optimizer()
+
+
+def word2vec(batch_gen):
+    """ Build the graph for word2vec model and train it """
+
+    with tf.device('/cpu:0'):
+        model = Word2VecModel(vocab_size=VOCAB_SIZE,
+            batch_size=BATCH_SIZE,
+            embed_size=EMBED_SIZE,
+            num_sampled=NUM_SAMPLED,
+            learning_rate=LEARNING_RATE)
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         sess.run(tf.global_variables_initializer())
@@ -71,9 +82,9 @@ def word2vec(batch_gen):
         writer = tf.summary.FileWriter('./my_graph/no_frills/', sess.graph)
         for index in range(NUM_TRAIN_STEPS):
             centers, targets = next(batch_gen)
-            # TO DO: create feed_dict, run optimizer, fetch loss_batch
-            loss_batch, __ = sess.run([loss, optimizer],
-                                feed_dict={center_words: centers, target_words: targets})
+            loss_batch, __ = sess.run([model.loss, model.optimizer],
+                                feed_dict={model.center_words: centers,
+                                            model.target_words: targets})
 
 
             total_loss += loss_batch
@@ -81,28 +92,30 @@ def word2vec(batch_gen):
                 print('Average loss at step {}: {:5.1f}'.format(index, total_loss / SKIP_STEP))
                 total_loss = 0.0
 
-        ###
-        final_embed_matrix = sess.run(embed_matrix)
-        embedding_var = tf.Variable(final_embed_matrix[:500], name='embedding')
-        sess.run(embedding_var.initializer)
-        config = projector.ProjectorConfig()
-        summary_writer = tf.summary.FileWriter('./my_graph/no_frills/')
-        embedding = config.embeddings.add()
-        embedding.tensor_name = embedding_var.name
-
-        embedding.metadata_path + './my_graph/no_frills/' + 'vocab_500.tsv'
-        print('===================\n\n\n HERE \n\n\n===============')
-        projector.visualize_embeddings(summary_writer, config)
-
-        saver_embed = tf.train.Saver([embedding_var])
-        saver_embed.save(sess, './my_graph/no_frills/' + 'skip-gram.cpkt', 1)
+        ### Embeding writer
+        # final_embed_matrix = sess.run(model.embed_matrix)
+        # embedding_var = tf.Variable(final_embed_matrix[:500], name='embedding')
+        # sess.run(embedding_var.initializer)
+        # config = projector.ProjectorConfig()
+        # summary_writer = tf.summary.FileWriter('./my_graph/no_frills/')
+        # embedding = config.embeddings.add()
+        # embedding.tensor_name = embedding_var.name
+        #
+        # embedding.metadata_path + './my_graph/no_frills/' + 'vocab_500.tsv'
+        # print('===================\n\n\n HERE \n\n\n===============')
+        # projector.visualize_embeddings(summary_writer, config)
+        #
+        # saver_embed = tf.train.Saver([embedding_var])
+        # saver_embed.save(sess, './my_graph/no_frills/' + 'skip-gram.cpkt', 1)
         ###
 
         writer.close()
 
+
 def main():
     batch_gen = process_data(VOCAB_SIZE, BATCH_SIZE, SKIP_WINDOW)
     word2vec(batch_gen)
+
 
 if __name__ == '__main__':
     main()
