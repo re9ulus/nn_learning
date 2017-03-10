@@ -67,7 +67,13 @@ class Word2VecModel:
         self._create_embedding()
         self._create_loss()
         self._create_optimizer()
+        self._summaries()
 
+    def _summaries(self):
+        with tf.name_scope('summaries'):
+            tf.summary.scalar('loss', self.loss)
+            tf.summary.histogram('histogram loss', self.loss)
+            self.summary_op = tf.summary.merge_all()
 
 
 def word2vec(batch_gen):
@@ -88,16 +94,18 @@ def word2vec(batch_gen):
     with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         sess.run(tf.global_variables_initializer())
 
+        writer = tf.summary.FileWriter('./my_graph/no_frills/', sess.graph)
+
         if RESTORE_SESSION:
             ckpt = tf.train.get_checkpoint_state(os.path.dirname('./checkpoints/checkpoint'))
             if ckpt and ckpt.model_checkpoint_path:
                 saver.restore(sess, ckpt.model_checkpoint_path)
 
         total_loss = 0.0 # we use this to calculate the average loss in the last SKIP_STEP steps
-        writer = tf.summary.FileWriter('./my_graph/no_frills/', sess.graph)
+
         for index in range(NUM_TRAIN_STEPS):
             centers, targets = next(batch_gen)
-            loss_batch, __ = sess.run([model.loss, model.optimizer],
+            loss_batch, __, summary = sess.run([model.loss, model.optimizer, model.summary_op],
                                 feed_dict={model.center_words: centers,
                                             model.target_words: targets})
 
@@ -107,6 +115,9 @@ def word2vec(batch_gen):
                     saver.save(sess, './checkpoints/word2vec', global_step=model.global_step)
                 print('Average loss at step {}: {:5.1f}'.format(index, total_loss / SKIP_STEP))
                 total_loss = 0.0
+
+            writer.add_summary(summary, global_step=index) ## What is step ?
+
 
         ### Embeding writer
         # final_embed_matrix = sess.run(model.embed_matrix)
