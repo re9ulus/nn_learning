@@ -2,6 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
 import numpy as np
 import tensorflow as tf
 from tensorflow.contrib.tensorboard.plugins import projector
@@ -56,13 +57,17 @@ class Word2VecModel:
                                                 name='loss')
 
     def _create_optimizer(self):
-        self.optimizer = tf.train.GradientDescentOptimizer(self.learning_rate).minimize(self.loss)
+        self.optimizer = tf.train.GradientDescentOptimizer(
+            self.learning_rate).minimize(self.loss, global_step=self.global_step)
 
     def _build_graph(self):
+        self.global_step = tf.Variable(0, dtype=tf.int32, trainable=False,
+            name='global_step')
         self._create_placeholders()
         self._create_embedding()
         self._create_loss()
         self._create_optimizer()
+
 
 
 def word2vec(batch_gen):
@@ -75,8 +80,18 @@ def word2vec(batch_gen):
             num_sampled=NUM_SAMPLED,
             learning_rate=LEARNING_RATE)
 
+    saver = tf.train.Saver()
+
+    RESTORE_SESSION = True
+    SAVE_SESSION = True
+
     with tf.Session(config=tf.ConfigProto(log_device_placement=True)) as sess:
         sess.run(tf.global_variables_initializer())
+
+        if RESTORE_SESSION:
+            ckpt = tf.train.get_checkpoint_state(os.path.dirname('./checkpoints/checkpoint'))
+            if ckpt and ckpt.model_checkpoint_path:
+                saver.restore(sess, ckpt.model_checkpoint_path)
 
         total_loss = 0.0 # we use this to calculate the average loss in the last SKIP_STEP steps
         writer = tf.summary.FileWriter('./my_graph/no_frills/', sess.graph)
@@ -86,9 +101,10 @@ def word2vec(batch_gen):
                                 feed_dict={model.center_words: centers,
                                             model.target_words: targets})
 
-
             total_loss += loss_batch
             if (index + 1) % SKIP_STEP == 0:
+                if SAVE_SESSION:
+                    saver.save(sess, './checkpoints/word2vec', global_step=model.global_step)
                 print('Average loss at step {}: {:5.1f}'.format(index, total_loss / SKIP_STEP))
                 total_loss = 0.0
 
