@@ -79,6 +79,8 @@ class Word2VecModel:
 def word2vec(batch_gen):
     """ Build the graph for word2vec model and train it """
 
+    # tf.set_random_seed(seed)
+
     with tf.device('/cpu:0'):
         model = Word2VecModel(vocab_size=VOCAB_SIZE,
             batch_size=BATCH_SIZE,
